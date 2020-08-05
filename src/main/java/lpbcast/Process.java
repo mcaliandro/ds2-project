@@ -22,8 +22,13 @@ public class Process extends AbstractActor {
     private int maxEventIdsLength;
     private int maxRetrieveDelay;
     private int longAgo;
-    private int L;
-    private int H;
+    private int s = 2;
+    private int L = 5;
+    private int H = 7;
+    private int alpha = 0.8;
+    private int r_H = 0.05;
+    private int r_L = 0.05;
+    private int W = 0.5;
 
     private int id;
     private int currentRound; // TODO: where/when we should update currentRound?
