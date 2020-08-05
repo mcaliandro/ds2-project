@@ -20,6 +20,10 @@ public class Process extends AbstractActor {
     private int maxUnsubsLength;
     private int maxEventsLength;
     private int maxEventIdsLength;
+    private int maxRetrieveDelay;
+    private int longAgo;
+    private int L;
+    private int H;
 
     private int id;
     private int currentRound; // TODO: where/when we should update currentRound?
@@ -59,6 +63,13 @@ public class Process extends AbstractActor {
 
 
     /*** Command classes ***/
+
+
+    // I think that RetrieveEvents and EmitGossip are same.
+    // You should Schedule them.
+    // For instance, EmitGossip starts at 1, interval 1
+    // RetrieveEvents starts at 1.5, interval 1
+    public static final class RetrieveEvents implements Serializable {}
 
     public static final class EmitGossip implements Serializable {}
 
@@ -102,21 +113,85 @@ public class Process extends AbstractActor {
 
     /*** Private methods ***/
 
-    private void RetrieveEvents() {
+    // private void RetrieveEvents() {
 
-    }
+    // }
 
+
+    // I have question about this function, could you explain to me???
     private void Broadcast(Event event) {
         events.add(event);
-        // TODO: implement function REMOVE_OLDEST_NOTIFICATIONS()
+        this.remove_oldest_notifications()
     }
 
     private void Deliver(Event event) {
 
     }
 
+    private void remove_oldest_notifications() {
+        // out of date
+        // boolean found = true;
+        // while (events.size() > maxEventsLength && found) {
+        //     found = false;
+        //     for (int i = 0; i < events.size() - 1 && !found; i++) {
+        //         for (int j = i + 1; j < events.size() && !found; j++) {
+        //             Event e = events.get(i);
+        //             Event e1 = events.get(j);
+        //             // we can use event.id to represent generateround
+        //             if (e.source == e1.source
+        //                     && Math.abs(e.generateround - e1.generateround) > longAgo) { 
+        //                 if (e.getGenerationRound() > e1.getGenerationRound()) {
+        //                     this.events.remove(e1);
+        //                 } else {
+        //                     this.events.remove(e);
+        //                 }
+        //                 found = true;
+        //             }
+        //         }
+        //     }
+        // }
+
+        // age
+        while (events.size() > maxEventsLength) {
+            Event candidate = events.get(0);
+            for (int i = 1; i < events.size(); i++) {
+                if (candidate.age < events.get(i).age) {    //choose max_age event to remove
+                    candidate = events.get(i);
+                }
+            }
+            events.remove(candidate);
+        }
+
+    }
+
 
     /*** Receive methods ***/
+
+    private void onReceiveRetrieveEvents(RetrieveEvents retrieve) {
+
+        for (BufferedEvent element: retrieveBuffer) {
+            if (currentRound - e.round > maxRetrieveDelay) {    // waiting maxRetrieveDelay
+                if (! eventsIds.contains(element.id)){  // the event has not been received in the meanwhile
+                    Event event = null;
+                    if (view.contain(element.gossipSender)) //  ask sender
+                    if (event == null) {    //  try with a random one
+                        // TODO: random choose in the view
+                    }
+                    if (event == null && this.allProcesses.containsKey(element.getCreator())) {}
+                        // TODO: ask source node
+                    if (event != null) { // if the event has arrived, deliver it
+                        events.add(event)
+                        // TODO: implement function LPBDELIVER(event)
+                        eventsIds.add(event.id);
+
+                    }
+                } else {
+                    retrieveBuffer.remove(element)
+                }
+            }
+
+        }  
+    }
 
     private void onReceiveEmitGossip(EmitGossip emit) {
         Gossip gossip = new Gossip(getSelf(), subscriptors, unsubscriptors, events, eventsIds);
@@ -165,25 +240,41 @@ public class Process extends AbstractActor {
                 // TODO: implement function LPBDELIVER(event)
                 eventsIds.add(event.id);
             }
+            // update age
+            for (Event event1 : this.events) {
+                    if (event.id.equals(event1.id) && event1.age < event.age) {
+                        event1.age = event.age
+                    }
+            }
         }
+
+
+        // phase 4: update eventsIds
         for (Long eventId : gossip.eventIds) {
             if (! eventsIds.contains(eventId)) {
                 BufferedEvent element = new BufferedEvent(eventId, gossip.sender, currentRound);
                 retrieveBuffer.add(element);
             }
-        }
+        }   
+
+
+        // phase 5: remove oldest notification
+        // I comment out_of_data fuction, 
+        // Because in adaptive gossip-based algorithm we just need remove max age
+        this.remove_oldest_notifications()
+
+        // phase 6:
         while (eventsIds.size() > maxEventIdsLength) {
             // TODO: implement procedure "remove oldest element from eventIds"
         }
-        while (events.size() > maxEventsLength) {
-            // TODO: implement procedure "remove oldest element from events"
-        }
+
+
 
     }
 
     private void onReceiveCreateEvent(CreateEvent message) {
-        Long eventId = System.currentTimeMillis(); // + random salt?
-        Event event = new Event(eventId, message.description, getSelf(), 0);
+        Long eventId = System.currentTimeMillis(); // + random salt? what is meaning of that
+        Event event = new Event(eventId, message.description, getSelf(), 0);    //   age = 0?
         Broadcast(event);
     }
 
@@ -196,6 +287,7 @@ public class Process extends AbstractActor {
                 .match(CreateEvent.class, this::onReceiveCreateEvent)
                 .match(EmitGossip.class, this::onReceiveEmitGossip)
                 .match(Gossip.class, this::onReceiveGossip)
+                .match(RetrieveEvents.class, this::onReceiveRetrieveEvents)
                 .build();
     }
 
