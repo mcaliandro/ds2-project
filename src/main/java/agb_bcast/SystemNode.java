@@ -215,18 +215,24 @@ public class SystemNode extends AbstractActor {
     /* LPBcast primitives */
     
     private void Broadcast(String eventId) {
-    	// every time the node broadcasts a new event, calculate avgTokens
-    	avgTokens = (avgTokens + tokens / (++broadcasts)); // update broadcast frequency
-    	
     	// while some tokens are available, first broadcast enqueued past events (if they exist)
     	while (tokens > 0 && broadcastQueue.size() > 0) {
+            tokens--; // use an available token
+            
+            // every time the node broadcasts an event, calculate avgTokens
+            avgTokens = (avgTokens + tokens / (++broadcasts)); // first update broadcast frequency
+            
     		String pastEventId = broadcastQueue.poll();
     		events.putIfAbsent(pastEventId, 0);
 	    	eventIds.putIfAbsent(pastEventId, gossipRound);
     	}
     	// if there is an available token, then use it to broadcast the new event
     	if (tokens > 0) {
-    		tokens--;
+    		tokens--; // use an available token
+            
+            // every time the node broadcasts an event, calculate avgTokens
+            avgTokens = (avgTokens + tokens / (++broadcasts)); // first update broadcast frequency
+            
 	    	events.putIfAbsent(eventId, 0);
 	    	eventIds.putIfAbsent(eventId, gossipRound);
 	        RemoveOldestNotifications();
@@ -283,8 +289,8 @@ public class SystemNode extends AbstractActor {
     	// initialize minBuff with the local buffers size
     	minBuff = buffersSize;
     	
-    	// initialize the emission rate with W
-    	rate = systemConfig.getDouble("adaptive.W");
+    	// initialize the emission rate with adaptive.rate value
+    	rate = systemConfig.getDouble("adaptive.rate");
     	
     	// initialize the average age of discarded messages -> avgAge = (H + L) / 2
     	avgAge = (systemConfig.getInt("adaptive.H") + systemConfig.getInt("adaptive.L")) / 2;
@@ -384,7 +390,7 @@ public class SystemNode extends AbstractActor {
         // when new system resources are released, increase the emission rate by rH
         if ((avgAge > systemConfig.getInt("adaptive.H")) &&						// if (avgAge > H AND
         	(avgTokens > (systemConfig.getInt("adaptive.max") / 2)) &&			//     avgTokens > max AND
-        	(rate > systemConfig.getDouble("adaptive.W"))) {					//     rate > W)
+        	(Math.random() > systemConfig.getDouble("adaptive.W"))) {			//     rand > W)
         	rate *= (1 + systemConfig.getDouble("adaptive.rH"));				// then rate = rate * (1 + rH)
         }
         // when the system is congested, reduce the emission rate by rL
@@ -393,8 +399,8 @@ public class SystemNode extends AbstractActor {
         	rate *= (1 - systemConfig.getDouble("adaptive.rL"));				// then rate = rate * (1 - rL)
         }
         
-        // configure the scheduler for the next tokens restore procedure -> after (1/rate) * 100 ms
-        restoreTokensTimer = setupOnceScheduler((long) (1 / rate) * 100, new RestoreTokens());
+        // configure the scheduler for the next tokens restore procedure -> after (1/rate) * 1000 ms
+        restoreTokensTimer = setupOnceScheduler((long) (1 / rate * 1000), new RestoreTokens());
         
         // if debug logging is enabled, show the state of the actor in logs
         if (log.isDebugEnabled()) { 
