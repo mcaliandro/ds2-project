@@ -1,10 +1,12 @@
 # Distributed System 2 project
-by Matteo Caliandro, e-mail: <matteo.caliandro@unitn.it>
+
+by Matteo Caliandro, <matteo.caliandro@studenti.unitn.it>, <mcaliandro92@gmail.com>  
+Lab Project for Distributed System 2 course @ University of Trento - Italy  
 
 The project implementation is based on:  
 - *L. Rodrigues, S. Hansurukande, J. Pereira, R. Guerraoui, A-M. Kermarrec. (2003). Adaptive Gossip-Based Broadcast.*  
 
-The gossip-based algorithm is based on:  
+The chosen gossip-based algorithm is:  
 - *P. Eugster, R. Guerraoui, S. Handurukande, P. Kuznetsov, A-M. Kermarrec. (2001). Lightweight Probabilistic Broadcast.*  
 
 ## How to run the project
